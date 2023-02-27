@@ -1,6 +1,7 @@
 # Ignore data and model files
-data/*
-models/*
+data/output*
+data/processed*
+models/*.pkl
 results/*
 runs/*
 
