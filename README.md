@@ -1,51 +1,39 @@
-deep-planner
+deepdosesens
 ==============================
 
-This repository explores the Deep Planner project.
+This repository accompanies our paper: "How Sensitive Are Deep Learning Based Radiotherapy Dose Prediction Models To Variability In Organs At Risk Segmentation?" accepted at the 20th International Symposium for Biomedical Imaging, 2023. 
 
-To create a new test set, run the following scripts (in the deep-planner/utils/ folder) in this specific order:
-1. rtss_to_nifti.py
-2. convert_dose_volume.py
-3. resize_to_standard_dimensions.py
-
-Then train the model using the train.py script (modifying the paths to the data files of course).
-
-and finally, test the model performance using test.py
+Other instructions are TBD.
 
 Project Organization
 ------------
 
     ├── LICENSE
-    ├── README.md                               <- The top-level README for developers using this project.
+    ├── README.md                   <- The top-level README for developers using this project.
     ├── data
-    │   ├── processed                           <- The final, canonical data sets for modeling.
-    │   └── raw                                 <- The original, immutable data dump.
+    │   └── .gitkeep                <- Folder for the data set; empty in this repo; contact us for details.
     │
-    ├── docs                                    <- A default Sphinx project; see sphinx-doc.org for details
+    ├── docs                        <- A default Sphinx project; see sphinx-doc.org for details
     │
-    ├── models                                  <- Trained and serialized models, model predictions, or model summaries
+    ├── models                      <- Trained model; also empty at this point; contact us for details.
     │
-    ├── notebooks                               <- Jupyter notebooks. Naming convention is a number (for ordering),
-    │                                              the creator's initials, and a short `-` delimited description, e.g.
-    │                                              `1.0-jqp-initial-data-exploration`.
+    ├── notebooks                   <- Jupyter notebooks. Naming convention is a number (for ordering),
+    │                                  the creator's initials, and a short `-` delimited description, e.g.
+    │                                  `1.0-jqp-initial-data-exploration`.
     │
-    ├── references                              <- Data dictionaries, manuals, and all other explanatory materials.
+    ├── results                     <- Where results from the notebooks are stored.
     │
-    ├── reports                                 <- Generated analysis as HTML, PDF, LaTeX, etc.
+    ├── requirements.txt            <- The requirements file for reproducing the analysis environment, e.g.
+    │                                  generated with `pip freeze > requirements.txt`
     │
-    ├── requirements.txt                        <- The requirements file for reproducing the analysis environment, e.g.
-    │                                              generated with `pip freeze > requirements.txt`
-    │
-    ├── deep-planner           <- Source code for use in this project.
-    │   │
-    │   ├── data                                <- Scripts to download or generate data
-    │   │
-    │   ├── model                               <- Classes to define the model architecture and losses.
-    │   │
-    │   ├── utils                               <- Scripts utilities used during data generation or training
-    │   │
-    │   ├── training                            <- Classes to handle network training.
-    │   │
-    │   ├── validation                          <- Classes to evaluate model performance.
-    │   │
-    │   └── visualization                       <- Scripts to create exploratory and results oriented visualizations
+    └── deepdosesens            <- Source code for use in this project.
+        │
+        ├── data                <- Scripts to download or generate data
+        │
+        ├── model               <- Classes to define the model architecture and losses.
+        │
+        ├── utils               <- Scripts utilities used during data generation or training
+        │
+        ├── training            <- Classes to handle network training.
+        │
+        └── validation          <- Classes to evaluate model performance.
