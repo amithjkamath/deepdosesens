@@ -2,8 +2,8 @@
 data/output*
 data/processed*
 models/*.pkl
-results/*
-runs/*
+results/*.pdf
+results/*.csv
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
