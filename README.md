@@ -14,7 +14,9 @@ If this is useful in your research, please consider citing:
     organization={IEEE}
     }
 
-Other instructions are TBD.
+See a short video description of this work here:
+
+[<img src="https://i.ytimg.com/vi/Lz5-n4lA3QM/maxresdefault.jpg" width="50%">](https://youtu.be/Lz5-n4lA3QM "Sensitivity of Deep Learning dose Prediction models")
 
 Project Organization
 ------------
