@@ -1,7 +1,63 @@
-Deep Learning Dose Prediction Sensitivity for Glioblastoma
-==============================
+# DeepDoseSens: Evaluating Sensitivity of Deep Learning-Based Radiotherapy Dose Prediction to Organs-at-Risk Segmentation Variability
 
-This repository accompanies our paper: "How Sensitive Are Deep Learning Based Radiotherapy Dose Prediction Models To Variability In Organs At Risk Segmentation?" accepted at the 20th International Symposium for Biomedical Imaging, 2023. 
+![ISBI 2023](https://img.shields.io/badge/Conference-ISBI%202023-blue)
+
+This repository accompanies our paper:
+
+**"How Sensitive Are Deep Learning Based Radiotherapy Dose Prediction Models To Variability In Organs At Risk Segmentation?"**  
+Accepted at the 20th International Symposium on Biomedical Imaging (ISBI), 2023.  
+
+**Authors:** Amith Kamath, Robert Poel, Jonas Willmann, Nicolaus Andratschke, Mauricio Reyes
+
+See a short video description of this work here:
+
+[<img src="https://i.ytimg.com/vi/Lz5-n4lA3QM/maxresdefault.jpg" width="50%">](https://youtu.be/Lz5-n4lA3QM "Sensitivity of Deep Learning dose Prediction models")
+
+🔗 [Project Website](https://amithjkamath.github.io/projects/2023-isbi-deepdosesens/)
+
+---
+
+## Overview
+
+This project investigates the robustness of deep learning models for radiotherapy dose prediction in glioblastoma patients, focusing on how variability in organs-at-risk (OAR) segmentation affects model performance. We introduce a controlled perturbation framework to simulate realistic segmentation variations and assess their impact on dose prediction accuracy.
+
+---
+
+## Key Contributions
+
+- **Controlled Perturbation Framework:** Developed a method to simulate realistic variations in OAR segmentations.
+- **Robustness Assessment:** Analyzed how segmentation variability influences dose prediction.
+- **Model Comparison:** Evaluated multiple deep learning models for robustness against OAR perturbations.
+
+---
+
+## Methodology
+
+- **Data:** Glioblastoma patient CT scans, OAR segmentations, and corresponding dose distributions.
+- **Perturbation Techniques:** Applied geometric deformations and noise to mimic segmentation variability.
+- **Model Training:** Used CNN-based architectures trained on original segmentations and tested on perturbed data.
+- **Metrics:** Evaluated using Mean Absolute Error (MAE), Dose-Volume Histogram (DVH) differences, and other relevant metrics.
+
+---
+
+## Getting Started
+
+### Prerequisites
+
+- Python 3.8+
+- PyTorch
+- MONAI
+- NumPy
+- SciPy
+- Matplotlib
+
+### Installation
+
+```bash
+git clone https://github.com/amithjkamath/deepdosesens.git
+cd deepdosesens
+pip install -r requirements.txt
+```
 
 If this is useful in your research, please consider citing:
 
@@ -14,56 +70,5 @@ If this is useful in your research, please consider citing:
     organization={IEEE}
     }
 
-See a short video description of this work here:
-
-[<img src="https://i.ytimg.com/vi/Lz5-n4lA3QM/maxresdefault.jpg" width="50%">](https://youtu.be/Lz5-n4lA3QM "Sensitivity of Deep Learning dose Prediction models")
-
-Project Organization
-------------
-
-    ├── data
-    │   └── .gitkeep            <- empty in this repo; contact us for access.
-    │
-    ├── models                  
-    |   └── .gitkeep            <- empty at this point; contact us for access.
-    │
-    ├── deepdosesens            <- Source code for use in this project.
-    │   │
-    │   ├── data                    <- Scripts to download or generate data
-    │   │
-    │   ├── model                   <- Classes to define the model architecture and losses.
-    │   │
-    │   ├── training                <- Classes to handle network training.
-    │   │
-    │   ├── utils                   <- Scripts utilities used during data generation or training
-    │   │
-    │   ├── validation              <- Classes to evaluate model performance.
-    │   │
-    │   ├── __init__.py             <- package initialization.
-    │   ├── test_per_ROI_scores.py  <- Generate dose and DVH scores per ROI.
-    │   ├── test.py                 <- model testing script.
-    │   └── train.py                <- Training script.
-    │
-    ├── docs                    <- A default Sphinx project; TBD for details.
-    |
-    ├── notebooks               <- Jupyter notebooks. 
-    │   ├── 1.0-ajk-visual-dose-differences.ipynb           <- Generate figure 2.
-    │   ├── 2.0-ajk-per-OAR-table.ipynb                     <- Generate table 1.
-    │   ├── 3.0-ajk-generate-ONL-DVHs.ipynb                 <- Generate figure 3.
-    │   ├── 4.0-ajk-generate-ONL-sensitivity-table.ipynb    <- Generate table 2.
-    │   └── 5.0-ajk-generate-ONL-differences.ipynb          <- additional figures, unused in paper.
-    |
-    ├── results                 <- Where results from the notebooks are stored.    
-    |
-    ├── .gitignore              <- .gitignore for this project.
-    ├── LICENSE                 <- LICENSE for this project.
-    ├── README.md               <- The top-level README for developers using this project.
-    ├── requirements.txt        <- The requirements file for reproducing the analysis     
-    │                              environment, generated with `pip freeze > 
-    │                              requirements.txt`
-    └── setup.py                <- boilerplate for using with pip.
-
-
-Credits
-------------
-Major props to the code and organization in https://github.com/LSL000UD/RTDosePrediction, which is what this model is based on.
+## Credits
+Major props to the code and organization in https://github.com/LSL000UD/RTDosePrediction, which is what this model is based on (looks like this repo is not maintained/available anymore!)
