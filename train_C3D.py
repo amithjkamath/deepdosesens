@@ -1,17 +1,23 @@
 # -*- encoding: utf-8 -*-
 import os
 import sys
+import logging
 
 if os.path.abspath("..") not in sys.path:
     sys.path.insert(0, os.path.abspath(".."))
 
 import argparse
 
-from data.dataloader_DLDP_C3D import get_loader
-from training.network_trainer import NetworkTrainer
-from model.C3D.model import Model
-from model.C3D.online_evaluation import online_evaluation
-from model.C3D.loss import Loss
+from deepdosesens.data.dataloader import get_loader
+from deepdosesens.training.trainer import NetworkTrainer
+from deepdosesens.model.model import CascadedUNet
+from deepdosesens.training.evaluate import evaluate
+from deepdosesens.model.loss import C3DLoss
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+from model.loss import Loss
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -37,11 +43,11 @@ if __name__ == "__main__":
     trainer = NetworkTrainer()
     trainer.setting.project_name = "C3D"
     trainer.setting.output_dir = (
-        "/home/akamath/Documents/deep-planner/models/dldp-concave-1"
+        "/Users/amithkamath/repo/papers/deepdosesens/models/dldp-C3D"
     )
     list_GPU_ids = args.list_GPU_ids
 
-    trainer.setting.network = Model(
+    trainer.setting.network = CascadedUNet(
         in_ch=15,
         out_ch=1,
         list_ch_A=[-1, 16, 32, 64, 128, 256],
@@ -50,40 +56,31 @@ if __name__ == "__main__":
 
     trainer.setting.max_iter = args.max_iter
 
-    """
-    # For the OpenKBP dataset, these are the entries.
+    logger.info("Start training with the following settings:")
+    logger.info(f"Batch size: {args.batch_size}")
+    logger.info(f"GPU IDs: {args.list_GPU_ids}")
+    logger.info(f"Max iterations: {args.max_iter}")
+
     list_eval_dirs = [
-        "/home/akamath/Documents/deep-planner/data/processed-kbp/pt_" + str(i)
-        for i in range(161, 201)
-    ]
-    data_paths = {
-        "train": [
-            "/home/akamath/Documents/deep-planner/data/processed-kbp/pt_" + str(i)
-            for i in range(1, 160)
-        ],
-        "val": list_eval_dirs,
-    }
-    """
-    list_eval_dirs = [
-        "/home/akamath/Documents/deep-planner/data/processed-dldp/DLDP_"
+        "/Users/amithkamath/repo/papers/deepdosesens/data/processed-dldp/DLDP_"
         + str(i).zfill(3)
         for i in range(62, 80)
         if i not in [63, 65, 67, 77]  # missing data
     ]
     list_eval_dirs += [
-        "/home/akamath/Documents/deep-planner/data/processed-dldp/DLDP_"
+        "/Users/amithkamath/repo/papers/deepdosesens/data/processed-dldp/DLDP_"
         + str(i).zfill(3)
         for i in range(108, 109)
     ]
 
     list_train_dirs = [
-        "/home/akamath/Documents/deep-planner/data/processed-dldp/DLDP_"
+        "/Users/amithkamath/repo/papers/deepdosesens/data/processed-dldp/DLDP_"
         + str(i).zfill(3)
         for i in range(1, 62)
         if i != 40  # missing data
     ]
     list_train_dirs += [
-        "/home/akamath/Documents/deep-planner/data/processed-dldp/DLDP_"
+        "/Users/amithkamath/repo/papers/deepdosesens/data/processed-dldp/DLDP_"
         + str(i).zfill(3)
         for i in range(101, 107)
     ]
@@ -92,6 +89,9 @@ if __name__ == "__main__":
         "train": list_train_dirs,
         "val": list_eval_dirs,
     }
+
+    logger.info(f"Training directories: {list_train_dirs}")
+    logger.info(f"Validation directories: {list_eval_dirs}")
 
     trainer.setting.train_loader, trainer.setting.val_loader = get_loader(
         data_paths,
@@ -104,9 +104,9 @@ if __name__ == "__main__":
 
     trainer.setting.eps_train_loss = 0.01
     trainer.setting.lr_scheduler_update_on_iter = True
-    trainer.setting.loss_function = Loss()
+    trainer.setting.loss_function = C3DLoss()
     trainer.setting.online_evaluation_function_dirs = list_eval_dirs
-    trainer.setting.online_evaluation_function_val = online_evaluation
+    trainer.setting.online_evaluation_function_val = evaluate
 
     trainer.set_optimizer(
         optimizer_type="Adam", args={"lr": 1e-3, "weight_decay": 1e-4}
@@ -117,9 +117,17 @@ if __name__ == "__main__":
         args={"T_max": args.max_iter, "eta_min": 1e-7, "last_epoch": -1},
     )
 
+    logger.info("Setting up the trainer...")
+    logger.info(f"Training parameters: {trainer.setting}")
+
     if not os.path.exists(trainer.setting.output_dir):
         os.mkdir(trainer.setting.output_dir)
     trainer.set_GPU_device(list_GPU_ids)
+
+    logger.info("Starting training process...")
+    logger.info(f"Output directory: {trainer.setting.output_dir}")
+    logger.info(f"GPU IDs: {trainer.setting.list_GPU_ids}")
+
     trainer.run()
 
     trainer.print_log_to_file("# Done !\n", "a")

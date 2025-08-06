@@ -6,7 +6,7 @@ import numpy as np
 import random
 import cv2
 
-from data.augmentation_OpenKBP_C3D import (
+from deepdosesens.data.augmentation import (
     random_flip_3d,
     random_rotate_around_z_axis,
     random_translate,

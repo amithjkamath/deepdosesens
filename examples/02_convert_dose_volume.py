@@ -1,7 +1,4 @@
-"""
-Reading CT and RTSS data from .dcm files
-"""
-
+# -*- encoding: utf-8 -*-
 import glob
 import os
 from tqdm import tqdm
@@ -13,7 +10,11 @@ import SimpleITK as sitk
 
 def rtdose_to_nifti(base_input_path, base_output_path, n_subjects):
     """
-    RTDOSE_TO_NIFTI converts RD*.dcm RT Dose files to NIfTI volumes.
+    Convert RT Dose DICOM files to NIfTI format.
+    Args:
+        base_input_path (str): Path to the directory containing RT Dose DICOM files.
+        base_output_path (str): Path to the directory where NIfTI files will be saved.
+        n_subjects (int): Number of subjects to process.
     """
     for subject_id in tqdm(range(1, n_subjects + 1)):
         try:

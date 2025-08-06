@@ -106,34 +106,14 @@ class NetworkTrainer:
     def set_optimizer(self, optimizer_type, args):
         # Sometimes we need set different learning rates for "encoder" and "decoder" separately
         if optimizer_type == "Adam":
-            if hasattr(self.setting.network, "decoder") and hasattr(
-                self.setting.network, "encoder"
-            ):
-                self.setting.optimizer = optim.Adam(
-                    [
-                        {
-                            "params": self.setting.network.encoder.parameters(),
-                            "lr": args["lr_encoder"],
-                        },
-                        {
-                            "params": self.setting.network.decoder.parameters(),
-                            "lr": args["lr_decoder"],
-                        },
-                    ],
-                    weight_decay=args["weight_decay"],
-                    betas=(0.9, 0.999),
-                    eps=1e-08,
-                    amsgrad=True,
-                )
-            else:
-                self.setting.optimizer = optim.Adam(
-                    self.setting.network.parameters(),
-                    lr=args["lr"],
-                    weight_decay=3e-5,
-                    betas=(0.9, 0.999),
-                    eps=1e-08,
-                    amsgrad=True,
-                )
+            self.setting.optimizer = optim.Adam(
+                self.setting.network.parameters(),
+                lr=args["lr"],
+                weight_decay=3e-5,
+                betas=(0.9, 0.999),
+                eps=1e-08,
+                amsgrad=True,
+            )
 
     def set_lr_scheduler(self, lr_scheduler_type, args):
         if lr_scheduler_type == "step":
@@ -291,13 +271,13 @@ class NetworkTrainer:
 
         if self.setting.online_evaluation_function_val is None:
             self.print_log_to_file(
-                "===============================> No online evaluation method specified ! \n",
+                "No online evaluation method specified ! \n",
                 "a",
             )
             raise Exception("No online evaluation method specified !")
         elif self.setting.online_evaluation_function_dirs is None:
             self.print_log_to_file(
-                "===============================> No online evaluation directories specified ! \n",
+                "No online evaluation directories specified ! \n",
                 "a",
             )
             raise Exception("No online evaluation directories specified !")
@@ -459,4 +439,3 @@ class NetworkTrainer:
         self.print_log_to_file(
             "==> Init trainer from " + ckpt_file + " successfully! \n", "a"
         )
-

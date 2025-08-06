@@ -13,8 +13,14 @@ import SimpleITK as sitk
 def ct_to_nifti(base_input_path, base_output_path, subject_name, out_fname):
     """
     CT_TO_NIFTI converts CT DICOM volumes to NIfTI.
+    Args:
+        base_input_path (str): Base path where the input DICOM files are located.
+        base_output_path (str): Base path where the output NIfTI files will be saved.
+        subject_name (str): Name of the subject (patient) directory.
+        out_fname (str): Output filename for the NIfTI file.
+    Returns:
+        None
     """
-
     fpath = os.path.join(base_input_path, subject_name)
     dicom_reader = DicomReaderWriter(description="Examples", arg_max=True)
     dicom_reader.walk_through_folders(fpath)
@@ -51,7 +57,16 @@ def rtss_to_nifti(
     associations,
 ):
     """
-    RTSS_TO_NIFTI converts RTSS DICOM volumes to NIfTI.
+    RTSS_TO_NIFTI converts RTSS DICOM structures to NIfTI.
+    Args:
+        base_input_path (str): Base path where the input DICOM files are located.
+        base_output_path (str): Base path where the output NIfTI files will be saved.
+        subject_name (str): Name of the subject (patient) directory.
+        out_fname (str): Output filename for the NIfTI file.
+        contour_names (list): List of contour names to extract.
+        associations (dict): Dictionary mapping contour names to their associations.
+    Returns:
+        None
     """
     fpath = os.path.join(base_input_path, subject_name)
     # rtstruct_file = glob.glob(fpath + "//RS*.dcm")[0]
@@ -83,7 +98,13 @@ def rtss_to_nifti(
 
 def rt_to_nifti(input_folder, output_folder, n_subjects):
     """
-    RT_TO_NIFTI converts RT data in base_input_folder to NIfTI in base_output_folder.
+    RT_TO_NIFTI converts RTSS and CT data to NIfTI format for multiple subjects.
+    Args:
+        input_folder (str): Path to the folder containing the input DICOM files.
+        output_folder (str): Path to the folder where the output NIfTI files will be saved.
+        n_subjects (int): Number of subjects to process.
+    Returns:
+        None
     """
 
     for subject_id in tqdm(range(1, n_subjects + 1)):
@@ -295,7 +316,7 @@ def rt_to_nifti(input_folder, output_folder, n_subjects):
 
 
 if __name__ == "__main__":
-    input_path = "/home/akamath/Documents/deep-planner/data/raw-dldp-old/"
-    output_path = "/home/akamath/Documents/deep-planner/data/interim-dldp-dt/"
+    input_path = "/home/akamath/Documents/deep-planner/data/raw-dldp/"
+    output_path = "/home/akamath/Documents/deep-planner/data/interim-dldp/"
     num_subjects = 100
     rt_to_nifti(input_path, output_path, num_subjects)

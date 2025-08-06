@@ -1,7 +1,4 @@
-"""
-Resample volumes to a consistent space for training the C3D network
-"""
-
+# -*- encoding: utf-8 -*-
 import os
 from tqdm import tqdm
 import numpy as np
@@ -10,10 +7,19 @@ import SimpleITK as sitk
 
 def resize_volume(ref_img, output_size, is_label=False):
     """
-    RESIZE_VOLUME resizes volumes using sitk.
-    See https://gist.github.com/zivy/79d7ee0490faee1156c1277a78e4a4c4 for more.
-    Physical image size corresponds to the largest physical size in the
-    training set, or any other arbitrary size.
+    RESIZE_VOLUME resizes a SimpleITK image to a specified output size.
+    Args:
+        ref_img (SimpleITK.Image): The reference image to be resized.
+        output_size (list): The desired output size as a list of integers.
+        is_label (bool): If True, uses nearest neighbor interpolation (for labels), otherwise uses linear interpolation.
+    Returns:
+        SimpleITK.Image: The resized image.
+    Raises:
+        ValueError: If the output size is not a list of three integers.
+
+    Notes:
+        See https://gist.github.com/zivy/79d7ee0490faee1156c1277a78e4a4c4 for more.
+        Physical image size corresponds to the largest physical size in the training set, or any other arbitrary size.
     """
     reference_physical_size = np.zeros(3)
     reference_physical_size[:] = [
@@ -79,7 +85,12 @@ def resize_volume(ref_img, output_size, is_label=False):
 
 def resize_nifti_volume(input_path, output_fname, output_size, is_label):
     """
-    RESIZE_NIFTI_VOLUME resizes NIfTI volumes using the resize_volume method.
+    Resize a NIfTI volume to the specified output size.
+    Args:
+        input_path (str): Path to the input NIfTI file.
+        output_fname (str): Path to save the resized NIfTI file.
+        output_size (list): Desired output size as a list of integers.
+        is_label (bool): If True, uses nearest neighbor interpolation (for labels), otherwise uses linear interpolation.
     """
 
     # Import the reference image
@@ -94,9 +105,13 @@ def resize_nifti_volume(input_path, output_fname, output_size, is_label):
 
 def resize_to(base_input_path, base_output_path, n_subjects, output_size):
     """
-    RESIZE_TO resizes OAR volumes and CT volumes to output_size.
+    Resize all NIfTI volumes in the specified directory to a standard size.
+    Args:
+        base_input_path (str): Path to the directory containing input NIfTI files.
+        base_output_path (str): Path to the directory where resized NIfTI files will be saved.
+        n_subjects (int): Number of subjects to process.
+        output_size (list): Desired output size as a list of integers.
     """
-
     for subject_id in tqdm(range(1, n_subjects + 1)):
         try:
             str_id = str(subject_id).zfill(3)
@@ -144,9 +159,6 @@ def resize_to(base_input_path, base_output_path, n_subjects, output_size):
                 resize_nifti_volume(
                     label_file, output_fname, output_size, is_label=True
                 )
-                # os.remove(label_file)
-
-            # print("Completed subject: ", subject_name)
 
         except Exception as ex:
             print(ex)
@@ -154,7 +166,8 @@ def resize_to(base_input_path, base_output_path, n_subjects, output_size):
 
 
 if __name__ == "__main__":
-
+    # Define input and output paths
+    # Change these paths as per your directory structure.
     input_path = "/home/akamath/Documents/deep-planner/data/interim-dldp/"
     output_path = "/home/akamath/Documents/deep-planner/data/processed-dldp/"
     num_subjects = 100

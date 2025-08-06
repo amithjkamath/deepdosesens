@@ -1,0 +1,17 @@
+[project]
+name = "deepdosesens"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.9"
+dependencies = [
+    "dicomrttool>=2.2.0",
+    "pydicom>=2.4.4",
+    "opencv-python>=4.11.0.86",
+    "simpleitk>=2.5.2",
+    "pandas>=2.3.1",
+    "numpy>=2.0.2",
+    "pymedphys>=0.40.0",
+    "torch>=2.7.1",
+    "tqdm>=4.67.1",
+]

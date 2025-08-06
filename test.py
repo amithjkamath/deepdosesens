@@ -1,17 +1,28 @@
 # -*- encoding: utf-8 -*-
+from deepdosesens.utils.data_utils import (
+    read_data,
+    pre_processing,
+    test_time_augmentation,
+    copy_sitk_imageinfo,
+)
+from deepdosesens.training.metrics import (
+    get_Dose_score_and_DVH_score,
+    get_Dose_score_and_DVH_score_per_ROI,
+)
+from deepdosesens.model.model import CascadedUNet
+from deepdosesens.training.trainer import NetworkTrainer
 import os
-import json
 import sys
+import json
+import torch
 import argparse
+import numpy as np
 import pandas as pd
+import SimpleITK as sitk
+from tqdm import tqdm
 
 if os.path.abspath("..") not in sys.path:
     sys.path.insert(0, os.path.abspath(".."))
-
-from utils.data_utils import read_data, pre_processing, test_time_augmentation, copy_sitk_imageinfo
-from validation.evaluate_DLDP import *
-from model.C3D.model import Model
-from training.network_trainer import *
 
 
 def inference(trainer, list_patient_dirs, save_path, do_TTA=True):
@@ -43,25 +54,25 @@ def inference(trainer, list_patient_dirs, save_path, do_TTA=True):
             prediction = 70.0 * prediction
 
             # Save prediction to nii image
-            templete_nii = sitk.ReadImage(patient_dir + "/Dose_Mask_resized.nii.gz")
+            templete_nii = sitk.ReadImage(patient_dir + "/Dose_Mask.nii.gz")
             prediction_nii = sitk.GetImageFromArray(prediction)
             prediction_nii = copy_sitk_imageinfo(templete_nii, prediction_nii)
             if not os.path.exists(save_path + "/" + patient_id):
                 os.mkdir(save_path + "/" + patient_id)
             sitk.WriteImage(
-                prediction_nii, save_path + "/" + patient_id + "/Dose_resized.nii.gz"
+                prediction_nii, save_path + "/" + patient_id + "/Dose.nii.gz"
             )
 
 
 if __name__ == "__main__":
 
-    root_dir = "/Users/amithkamath/repo"
-    model_dir = os.path.join(root_dir, "deep-planner/models/")
-    output_dir = os.path.join(root_dir, "deep-planner/output_perROI")
+    root_dir = "/home/akamath/Documents"
+    model_dir = os.path.join(root_dir, "deep-planner/models/dldp-5")
+    output_dir = os.path.join(root_dir, "deep-planner/runs/output-dldp-5")
     os.makedirs(output_dir, exist_ok=True)
 
-    gt_dir = os.path.join(root_dir, "deep-planner/data/resized")
-    test_dir = gt_dir # change this if somewhere else.
+    gt_dir = os.path.join(root_dir, "deep-planner/data/processed-dldp")
+    test_dir = gt_dir  # change this if somewhere else.
 
     if not os.path.exists(model_dir):
         raise Exception(
@@ -86,7 +97,7 @@ if __name__ == "__main__":
     trainer.setting.project_name = "C3D"
     trainer.setting.output_dir = output_dir
 
-    trainer.setting.network = Model(
+    trainer.setting.network = CascadedUNet(
         in_ch=15,
         out_ch=1,
         list_ch_A=[-1, 16, 32, 64, 128, 256],
@@ -98,13 +109,13 @@ if __name__ == "__main__":
         ckpt_file=args.model_path, list_GPU_ids=[args.GPU_id], only_network=True
     )
 
-    for subject_id in [81, 82]:
+    dose_score = []
+    dvh_score = []
 
+    for subject_id in range(81, 101):
         # Start inference
         print("\n\n# Start inference !")
-        list_patient_dirs = [
-            os.path.join(test_dir, "DLDP_" + str(subject_id).zfill(3))
-        ]
+        list_patient_dirs = [os.path.join(test_dir, "DLDP_" + str(subject_id).zfill(3))]
         inference(
             trainer,
             list_patient_dirs,
@@ -161,3 +172,29 @@ if __name__ == "__main__":
             + str(subject_id).zfill(3)
             + "/dvh_score.csv"
         )
+
+        Dose_score, DVH_score = get_Dose_score_and_DVH_score(
+            prediction_dir=os.path.join(trainer.setting.output_dir, "Prediction"),
+            patient_id=subject_id,
+            gt_dir=gt_dir,
+        )
+
+        dose_score.append(Dose_score)
+        dvh_score.append(DVH_score)
+        print("\n\nDose score is: " + str(Dose_score))
+        print("DVH score is: " + str(DVH_score))
+
+    print(
+        "Mean dose score: "
+        + str(np.mean(dose_score))
+        + " ("
+        + str(np.std(dose_score))
+        + ")"
+    )
+    print(
+        "Mean dvh score: "
+        + str(np.mean(dvh_score))
+        + " ("
+        + str(np.std(dvh_score))
+        + ")"
+    )

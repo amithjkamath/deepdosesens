@@ -1,11 +1,11 @@
 # -*- encoding: utf-8 -*-
-from data.dataloader_DLDP_C3D import val_transform, read_data, pre_processing
-from validation.evaluate_DLDP import *
-from model import *
+from deepdosesens.data.dataloader import val_transform, read_data, pre_processing
+from deepdosesens.training.metrics import get_3D_Dose_dif
 import torch
+import numpy as np
 
 
-def online_evaluation(trainer, list_patient_dirs):
+def evaluate(trainer, list_patient_dirs):
 
     list_Dose_score = []
 

@@ -1,9 +1,6 @@
 # Ignore data and model files
-data/output*
-data/processed*
-models/*.pkl
-results/*.pdf
-results/*.csv
+data/*
+results/*
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
