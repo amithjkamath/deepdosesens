@@ -3,10 +3,43 @@ import numpy as np
 import SimpleITK as sitk
 import torch
 
-from deepdosesens.training import trainer
+
+def read_nifti_image(file_path: str, type=sitk.sitkFloat32) -> np.ndarray:
+    """Read a NIfTI image and return it as a numpy array."""
+    if not os.path.exists(file_path):
+        raise FileNotFoundError(f"The file {file_path} does not exist.")
+    image = sitk.ReadImage(file_path, type)
+    image_array = sitk.GetArrayFromImage(image)
+    return image_array
+
+
+def get_spacing(file_path: str) -> tuple:
+    """Get the spacing of a NIfTI image."""
+    if not os.path.exists(file_path):
+        raise FileNotFoundError(f"The file {file_path} does not exist.")
+    image = sitk.ReadImage(file_path)
+    return image.GetSpacing()
+
+
+def duplicate_image_metadata(
+    source_image: sitk.Image, target_image: sitk.Image
+) -> sitk.Image:
+    """Duplicate metadata from source_image to target_image.
+    This includes spacing, direction, and origin.
+    """
+    target_image.SetSpacing(source_image.GetSpacing())
+    target_image.SetDirection(source_image.GetDirection())
+    target_image.SetOrigin(source_image.GetOrigin())
+
+    return target_image
 
 
 def read_data(patient_dir):
+    """Read data from the patient directory.
+    Returns a dictionary with images loaded from the specified files.
+    Each key corresponds to a structure name, and the value is a numpy array.
+    If a file does not exist, it returns a zero-filled array of shape (1, 128, 128, 128).
+    """
     dict_images = {}
     list_structures = [
         "CT",
@@ -48,6 +81,10 @@ def read_data(patient_dir):
 
 
 def pre_processing(dict_images):
+    """Pre-process the images for inference.
+    Combines PTVs, OARs, and CT images into a single input array.
+    Returns a list containing the input array and a possible dose mask.
+    """
     # PTVs
     PTVs = dict_images["Target"]
 
@@ -84,14 +121,6 @@ def pre_processing(dict_images):
         possible_dose_mask,
     ]
     return list_images
-
-
-def copy_sitk_imageinfo(image1, image2):
-    image2.SetSpacing(image1.GetSpacing())
-    image2.SetDirection(image1.GetDirection())
-    image2.SetOrigin(image1.GetOrigin())
-
-    return image2
 
 
 # Input is C*Z*H*W

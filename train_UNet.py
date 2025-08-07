@@ -11,7 +11,7 @@ import argparse
 from deepdosesens.data.dataloader import get_loader
 from deepdosesens.training.trainer import NetworkTrainer
 from deepdosesens.model.model import UNet
-from deepdosesens.training.evaluate import evaluate
+from deepdosesens.training.validator import validate
 from deepdosesens.model.loss import UNetLoss
 
 logging.basicConfig(level=logging.INFO)
@@ -27,7 +27,7 @@ if __name__ == "__main__":
         "--list_GPU_ids",
         nargs="+",
         type=int,
-        default=[0],
+        default=[-1],
         help="list_GPU_ids for training (default: [0])",
     )
     parser.add_argument(
@@ -38,12 +38,17 @@ if __name__ == "__main__":
     )
     args = parser.parse_args()
 
+    # data_root = "/storage/homefs/ak21u605/data/treatmentplan/processed-dldp"
+    # output_dir = "/storage/homefs/ak21u605/data/treatmentplan/processed-dldp-UNet"
+    data_root = "/Users/amithkamath/repo/papers/deepdosesens/data/processed-dldp"
+    output_dir = (
+        "/Users/amithkamath/repo/papers/deepdosesens/results/processed-dldp-UNet"
+    )
+
     #  Start training
     trainer = NetworkTrainer()
     trainer.setting.project_name = "UNet"
-    trainer.setting.output_dir = (
-        "/storage/homefs/ak21u605/data/treatmentplan/processed-dldp-UNet"
-    )
+    trainer.setting.output_dir = output_dir
     list_GPU_ids = args.list_GPU_ids
 
     trainer.setting.network = UNet(
@@ -60,28 +65,18 @@ if __name__ == "__main__":
     logger.info(f"Max iterations: {args.max_iter}")
 
     list_eval_dirs = [
-        "/storage/homefs/ak21u605/data/treatmentplan/processed-dldp/DLDP_"
-        + str(i).zfill(3)
+        data_root + "/DLDP_" + str(i).zfill(3)
         for i in range(62, 80)
         if i not in [63, 65, 67, 77]  # missing data
     ]
-    list_eval_dirs += [
-        "/storage/homefs/ak21u605/data/treatmentplan/processed-dldp/DLDP_"
-        + str(i).zfill(3)
-        for i in range(108, 109)
-    ]
+    list_eval_dirs += [data_root + "/DLDP_" + str(i).zfill(3) for i in range(108, 109)]
 
     list_train_dirs = [
-        "/storage/homefs/ak21u605/data/treatmentplan/processed-dldp/DLDP_"
-        + str(i).zfill(3)
+        data_root + "/DLDP_" + str(i).zfill(3)
         for i in range(1, 62)
         if i != 40  # missing data
     ]
-    list_train_dirs += [
-        "/storage/homefs/ak21u605/data/treatmentplan/processed-dldp/DLDP_"
-        + str(i).zfill(3)
-        for i in range(101, 107)
-    ]
+    list_train_dirs += [data_root + "/DLDP_" + str(i).zfill(3) for i in range(101, 107)]
 
     data_paths = {
         "train": list_train_dirs,
@@ -104,7 +99,7 @@ if __name__ == "__main__":
     trainer.setting.lr_scheduler_update_on_iter = True
     trainer.setting.loss_function = UNetLoss()
     trainer.setting.online_evaluation_function_dirs = list_eval_dirs
-    trainer.setting.online_evaluation_function_val = evaluate
+    trainer.setting.online_evaluation_function_val = validate
 
     trainer.set_optimizer(
         optimizer_type="Adam", args={"lr": 1e-3, "weight_decay": 1e-4}

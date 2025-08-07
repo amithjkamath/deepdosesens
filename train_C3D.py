@@ -11,7 +11,7 @@ import argparse
 from deepdosesens.data.dataloader import get_loader
 from deepdosesens.training.trainer import NetworkTrainer
 from deepdosesens.model.model import CascadedUNet
-from deepdosesens.training.evaluate import evaluate
+from deepdosesens.training.validator import validate
 from deepdosesens.model.loss import C3DLoss
 
 logging.basicConfig(level=logging.INFO)
@@ -104,7 +104,7 @@ if __name__ == "__main__":
     trainer.setting.lr_scheduler_update_on_iter = True
     trainer.setting.loss_function = C3DLoss()
     trainer.setting.online_evaluation_function_dirs = list_eval_dirs
-    trainer.setting.online_evaluation_function_val = evaluate
+    trainer.setting.online_evaluation_function_val = validate
 
     trainer.set_optimizer(
         optimizer_type="Adam", args={"lr": 1e-3, "weight_decay": 1e-4}

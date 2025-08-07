@@ -1,203 +1,114 @@
-import numpy as np
+# -*- encoding: utf-8 -*-
+"""
+This module contains functions to compute dose and DVH scores for evaluation.
+It includes functions to compute absolute dose differences and DVH metrics for
+specific structures, as well as a function to compute scores for a given prediction
+and ground truth directory.
+
+These functions are inspired by https://github.com/ababier/open-kbp
+"""
 import os
+import numpy as np
 import SimpleITK as sitk
-from tqdm import tqdm
-
-"""
-These codes are modified from https://github.com/ababier/open-kbp
-"""
+from deepdosesens.data.utils import get_spacing, read_nifti_image
 
 
-def get_3D_Dose_dif(pred, gt, possible_dose_mask=None):
-    if possible_dose_mask is not None:
-        pred = pred[possible_dose_mask > 0]
-        gt = gt[possible_dose_mask > 0]
+def compute_abs_dose_difference(
+    pred_: np.ndarray, gt_: np.ndarray, dose_mask_=None
+) -> float:
+    """
+    Compute absolute dose difference between prediction and ground truth.
+        If dose_mask_ is provided, only compute the difference in the masked region.
+    """
+    if dose_mask_ is not None:
+        pred_ = pred_[dose_mask_ > 0]
+        gt_ = gt_[dose_mask_ > 0]
 
-    dif = np.mean(np.abs(pred - gt))
-    return dif
+    dose_difference = np.mean(np.abs(pred_ - gt_))
+    return float(dose_difference)
 
 
-def get_DVH_metrics(_dose, _mask, mode, spacing=None):
+def compute_dvh(dose_: np.ndarray, mask_: np.ndarray, mode_: str, spacing=None):
+    """
+    Compute DVH metrics for the given dose and mask.
+        mode_ can be "Target" or "OAR".
+        If mode_ is "Target", it computes D1, D95, and D99.
+        If mode_ is "OAR", it computes D_0.1_cc and Dmean.
+        spacing is required for OAR metrics to calculate D_0.1_cc.
+    """
     output = {}
 
-    if mode == "target":
-        _roi_dose = _dose[_mask > 0]
-        # D1
-        output["D1"] = np.percentile(_roi_dose, 99)
-        # D95
-        output["D95"] = np.percentile(_roi_dose, 5)
-        # D99
-        output["D99"] = np.percentile(_roi_dose, 1)
+    if mode_.lower() == "target":
+        roi_dose_ = dose_[mask_ > 0]
+        output["D1"] = np.percentile(roi_dose_, 99)
+        output["D95"] = np.percentile(roi_dose_, 5)
+        output["D99"] = np.percentile(roi_dose_, 1)
 
-    elif mode == "OAR":
+    elif mode_.lower() == "oar":
         if spacing is None:
-            raise Exception("calculate OAR metrics need spacing")
+            raise ValueError("Calculating OAR metrics need spacing.")
 
-        _roi_dose = _dose[_mask > 0]
-        _roi_size = len(_roi_dose)
-        _voxel_size = np.prod(spacing)
-        voxels_in_tenth_of_cc = np.maximum(1, np.round(100 / _voxel_size))
+        roi_dose_ = dose_[mask_ > 0]
+        roi_size_ = len(roi_dose_)
+        voxel_size_ = np.prod(spacing)
+        voxels_in_tenth_of_cc = np.maximum(1, np.round(100 / voxel_size_))
         # D_0.1_cc
-        fractional_volume_to_evaluate = 100 - voxels_in_tenth_of_cc / _roi_size * 100
-        if fractional_volume_to_evaluate <= 0:
+        fractional_volume_ = 100 - voxels_in_tenth_of_cc / roi_size_ * 100
+        if fractional_volume_ <= 0:
             output["D_0.1_cc"] = 0.0
         else:
-            output["D_0.1_cc"] = np.percentile(_roi_dose, fractional_volume_to_evaluate)
-        # Dmean
-        output["mean"] = np.mean(_roi_dose)
+            output["D_0.1_cc"] = np.percentile(roi_dose_, fractional_volume_)
+
+        output["mean"] = np.mean(roi_dose_)
     else:
-        raise Exception("Unknown mode!")
+        raise ValueError("Unknown mode. Can only be 'Target' or 'OAR'!")
 
     return output
 
 
-def get_Dose_score_and_DVH_score(prediction_dir, patient_id, gt_dir):
-
-    list_dose_dif = []
-    list_DVH_dif = []
-
-    pred_nii = sitk.ReadImage(
-        os.path.join(prediction_dir, "DLDP_" + str(patient_id).zfill(3), "Dose.nii.gz")
-    )
-    pred = sitk.GetArrayFromImage(pred_nii)
-
-    gt_nii = sitk.ReadImage(
-        os.path.join(gt_dir, "DLDP_" + str(patient_id).zfill(3), "Dose.nii.gz")
-    )
-    gt = sitk.GetArrayFromImage(gt_nii)
-
-    # Dose dif
-    possible_dose_mask_nii = sitk.ReadImage(
-        os.path.join(gt_dir, "DLDP_" + str(patient_id).zfill(3), "Dose_Mask.nii.gz")
-    )
-    possible_dose_mask = sitk.GetArrayFromImage(possible_dose_mask_nii)
-    list_dose_dif.append(get_3D_Dose_dif(pred, gt, possible_dose_mask))
-
-    dvh_dict = {}
-
-    # DVH dif
-    for structure_name in [
-        "BrainStem",
-        "Chiasm",
-        "Cochlea_L",
-        "Cochlea_R",
-        "Eye_L",
-        "Eye_R",
-        "Hippocampus_L",
-        "Hippocampus_R",
-        "LacrimalGland_L",
-        "LacrimalGland_R",
-        "OpticNerve_L",
-        "OpticNerve_R",
-        "Pituitary",
-        "Target",
-    ]:
-        structure_file = os.path.join(
-            gt_dir, "DLDP_" + str(patient_id).zfill(3), structure_name + ".nii.gz"
-        )
-
-        # If the structure has been delineated
-        if os.path.exists(structure_file):
-            structure_nii = sitk.ReadImage(structure_file, sitk.sitkUInt8)
-            structure = sitk.GetArrayFromImage(structure_nii)
-
-            spacing = structure_nii.GetSpacing()
-            if structure_name.find("Target") > -1:
-                mode = "target"
-            else:
-                mode = "OAR"
-            pred_DVH = get_DVH_metrics(pred, structure, mode=mode, spacing=spacing)
-            gt_DVH = get_DVH_metrics(gt, structure, mode=mode, spacing=spacing)
-
-            dvh_dict[structure_name] = [pred_DVH, gt_DVH]
-
-            for metric in gt_DVH.keys():
-                list_DVH_dif.append(abs(gt_DVH[metric] - pred_DVH[metric]))
-
-    return np.mean(list_dose_dif), np.mean(list_DVH_dif)
-
-
-def get_Dose_score_and_DVH_score_per_ROI(prediction_dir, patient_id, gt_dir):
-
-    list_dose_dif = []
-    list_DVH_dif = []
-    overall_dose_dict = {}
-    overall_dvh_dict = {}
-
-    structure_list = [
-        "BrainStem",
-        "Chiasm",
-        "Cochlea_L",
-        "Cochlea_R",
-        "Eye_L",
-        "Eye_R",
-        "Hippocampus_L",
-        "Hippocampus_R",
-        "LacrimalGland_L",
-        "LacrimalGland_R",
-        "OpticNerve_L",
-        "OpticNerve_R",
-        "Pituitary",
-        "Target",
-    ]
-
-    pred_nii = sitk.ReadImage(
-        os.path.join(prediction_dir, "DLDP_" + str(patient_id).zfill(3), "Dose.nii.gz")
-    )
-    pred = sitk.GetArrayFromImage(pred_nii)
-
-    gt_nii = sitk.ReadImage(
-        os.path.join(gt_dir, "DLDP_" + str(patient_id).zfill(3), "Dose.nii.gz")
-    )
-    gt = sitk.GetArrayFromImage(gt_nii)
-
-    # Dose dif
-    possible_dose_mask_nii = sitk.ReadImage(
-        os.path.join(gt_dir, "DLDP_" + str(patient_id).zfill(3), "Dose_Mask.nii.gz")
-    )
-    possible_dose_mask = sitk.GetArrayFromImage(possible_dose_mask_nii)
-    list_dose_dif.append(get_3D_Dose_dif(pred, gt, possible_dose_mask))
+def compute_scores(prediction_path, reference_path, structure_list=None):
 
     dose_dict = {}
+    dvh_dict = {}
+
+    predicted_dose = read_nifti_image(os.path.join(prediction_path, "Dose.nii.gz"))
+    reference_dose = read_nifti_image(os.path.join(reference_path, "Dose.nii.gz"))
+    dose_mask = read_nifti_image(os.path.join(reference_path, "Dose_Mask.nii.gz"))
+
+    dose_dict["Body"] = compute_abs_dose_difference(
+        predicted_dose, reference_dose, dose_mask
+    )
+
     for structure_name in structure_list:
-        possible_dose_mask_nii = sitk.ReadImage(
-            os.path.join(
-                gt_dir, "DLDP_" + str(patient_id).zfill(3), structure_name + ".nii.gz"
-            )
+
+        dose_mask = read_nifti_image(
+            os.path.join(reference_path, structure_name + ".nii.gz")
         )
-        possible_dose_mask = sitk.GetArrayFromImage(possible_dose_mask_nii)
-        dose_diff = get_3D_Dose_dif(pred, gt, possible_dose_mask)
-        list_dose_dif.append(dose_diff)
+        dose_diff = compute_abs_dose_difference(
+            predicted_dose, reference_dose, dose_mask
+        )
         dose_dict[structure_name] = dose_diff
 
-    overall_dose_dict["DLDP_" + str(patient_id).zfill(3)] = dose_dict
-
-    dvh_dict = {}
-    for structure_name in structure_list:
-        structure_file = os.path.join(
-            gt_dir, "DLDP_" + str(patient_id).zfill(3), structure_name + ".nii.gz"
-        )
-
-        # If the structure has been delineated
+        structure_file = os.path.join(reference_path, structure_name + ".nii.gz")
         if os.path.exists(structure_file):
-            structure_nii = sitk.ReadImage(structure_file, sitk.sitkUInt8)
-            structure = sitk.GetArrayFromImage(structure_nii)
-
-            spacing = structure_nii.GetSpacing()
+            structure = read_nifti_image(structure_file, type=sitk.sitkUInt8)
+            spacing = get_spacing(structure_file)
             if structure_name.find("Target") > -1:
                 mode = "target"
             else:
                 mode = "OAR"
-            pred_DVH = get_DVH_metrics(pred, structure, mode=mode, spacing=spacing)
-            gt_DVH = get_DVH_metrics(gt, structure, mode=mode, spacing=spacing)
+            dvh_pred = compute_dvh(
+                predicted_dose, structure, mode_=mode, spacing=spacing
+            )
+            dvh_ref = compute_dvh(
+                reference_dose, structure, mode_=mode, spacing=spacing
+            )
 
             dvh_diff = 0
-            for metric in gt_DVH.keys():
-                this_diff = abs(gt_DVH[metric] - pred_DVH[metric])
-                list_DVH_dif.append(this_diff)
+            metrics = list(dvh_ref.keys())
+            for metric in metrics:
+                this_diff = abs(dvh_ref[metric] - dvh_pred[metric])
                 dvh_diff += this_diff
-            dvh_dict[structure_name] = dvh_diff / len(gt_DVH.keys())
+            dvh_dict[structure_name] = dvh_diff / len(metrics)
 
-    overall_dvh_dict["DLDP_" + str(patient_id).zfill(3)] = dvh_dict
-
-    return overall_dose_dict, overall_dvh_dict
+    return dose_dict, dvh_dict
