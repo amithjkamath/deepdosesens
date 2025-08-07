@@ -415,7 +415,7 @@ class NetworkTrainer:
 
     # Default load trainer in cpu, please reset device using the function self.set_GPU_device
     def init_trainer(self, ckpt_file, list_GPU_ids, only_network=True):
-        ckpt = torch.load(ckpt_file, map_location="cpu")
+        ckpt = torch.load(ckpt_file, map_location="cpu", weights_only=False)
 
         self.setting.network.load_state_dict(ckpt["network_state_dict"])
 

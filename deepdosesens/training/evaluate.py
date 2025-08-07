@@ -24,13 +24,18 @@ def evaluate(trainer, list_patient_dirs):
             # Forward
             [input_] = val_transform([input_])
             input_ = input_.unsqueeze(0).to(trainer.setting.device)
-            [_, prediction_B] = trainer.setting.network(input_)
-            prediction_B = np.array(prediction_B.cpu().data[0, :, :, :, :])
-
+            if trainer.setting.project_name == "C3D":
+                [_, prediction] = trainer.setting.network(input_)
+            elif trainer.setting.project_name == "UNet":
+                prediction = trainer.setting.network(input_)
+            else:
+                ValueError(f"The trainer project name {trainer.setting.project_name} is unrecognized.")
+            
+            prediction = np.array(prediction.cpu().data[0, :, :, :, :])
             # Post processing and evaluation
-            prediction_B[np.logical_or(possible_dose_mask < 1, prediction_B < 0)] = 0
+            prediction[np.logical_or(possible_dose_mask < 1, prediction < 0)] = 0
             Dose_score = 70.0 * get_3D_Dose_dif(
-                prediction_B.squeeze(0),
+                prediction.squeeze(0),
                 gt_dose.squeeze(0),
                 possible_dose_mask.squeeze(0),
             )
@@ -38,14 +43,14 @@ def evaluate(trainer, list_patient_dirs):
 
             try:
                 trainer.print_log_to_file(
-                    "========> " + patient_name + ":  " + str(Dose_score), "a"
+                    "=> " + patient_name + ":  " + str(Dose_score), "a"
                 )
             except:
                 pass
 
     try:
         trainer.print_log_to_file(
-            "===============================================> mean Dose score: "
+            "=> mean Dose score: "
             + str(np.mean(list_Dose_score)),
             "a",
         )

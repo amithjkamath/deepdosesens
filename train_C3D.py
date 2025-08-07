@@ -17,8 +17,6 @@ from deepdosesens.model.loss import C3DLoss
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-from model.loss import Loss
-
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument(
@@ -43,7 +41,7 @@ if __name__ == "__main__":
     trainer = NetworkTrainer()
     trainer.setting.project_name = "C3D"
     trainer.setting.output_dir = (
-        "/Users/amithkamath/repo/papers/deepdosesens/models/dldp-C3D"
+        "/storage/homefs/ak21u605/data/treatmentplan/processed-dldp-c3dmodel-isas"
     )
     list_GPU_ids = args.list_GPU_ids
 
@@ -62,25 +60,25 @@ if __name__ == "__main__":
     logger.info(f"Max iterations: {args.max_iter}")
 
     list_eval_dirs = [
-        "/Users/amithkamath/repo/papers/deepdosesens/data/processed-dldp/DLDP_"
+        "/storage/homefs/ak21u605/data/treatmentplan/processed-dldp/DLDP_"
         + str(i).zfill(3)
         for i in range(62, 80)
         if i not in [63, 65, 67, 77]  # missing data
     ]
     list_eval_dirs += [
-        "/Users/amithkamath/repo/papers/deepdosesens/data/processed-dldp/DLDP_"
+        "/storage/homefs/ak21u605/data/treatmentplan/processed-dldp/DLDP_"
         + str(i).zfill(3)
         for i in range(108, 109)
     ]
 
     list_train_dirs = [
-        "/Users/amithkamath/repo/papers/deepdosesens/data/processed-dldp/DLDP_"
+        "/storage/homefs/ak21u605/data/treatmentplan/processed-dldp/DLDP_"
         + str(i).zfill(3)
         for i in range(1, 62)
         if i != 40  # missing data
     ]
     list_train_dirs += [
-        "/Users/amithkamath/repo/papers/deepdosesens/data/processed-dldp/DLDP_"
+        "/storage/homefs/ak21u605/data/treatmentplan/processed-dldp/DLDP_"
         + str(i).zfill(3)
         for i in range(101, 107)
     ]

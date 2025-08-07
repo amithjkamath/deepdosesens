@@ -9,7 +9,7 @@ from deepdosesens.training.metrics import (
     get_Dose_score_and_DVH_score,
     get_Dose_score_and_DVH_score_per_ROI,
 )
-from deepdosesens.model.model import CascadedUNet
+from deepdosesens.model.model import UNet
 from deepdosesens.training.trainer import NetworkTrainer
 import os
 import sys
@@ -66,18 +66,11 @@ def inference(trainer, list_patient_dirs, save_path, do_TTA=True):
 
 if __name__ == "__main__":
 
-    root_dir = "/home/akamath/Documents"
-    model_dir = os.path.join(root_dir, "deep-planner/models/dldp-5")
-    output_dir = os.path.join(root_dir, "deep-planner/runs/output-dldp-5")
+    root_dir = os.path.dirname(os.path.abspath(__file__))
+    model_dir = os.path.join(root_dir, "results", "processed-dldp-UNet")
+    data_dir = os.path.join(root_dir, "data", "processed-dldp")
+    output_dir = model_dir
     os.makedirs(output_dir, exist_ok=True)
-
-    gt_dir = os.path.join(root_dir, "deep-planner/data/processed-dldp")
-    test_dir = gt_dir  # change this if somewhere else.
-
-    if not os.path.exists(model_dir):
-        raise Exception(
-            "OpenKBP_C3D should be prepared before testing, please run prepare_OpenKBP_C3D.py"
-        )
 
     parser = argparse.ArgumentParser()
     parser.add_argument(
@@ -94,14 +87,13 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     trainer = NetworkTrainer()
-    trainer.setting.project_name = "C3D"
+    trainer.setting.project_name = "UNet"
     trainer.setting.output_dir = output_dir
 
-    trainer.setting.network = CascadedUNet(
+    trainer.setting.network = UNet(
         in_ch=15,
         out_ch=1,
-        list_ch_A=[-1, 16, 32, 64, 128, 256],
-        list_ch_B=[-1, 32, 64, 128, 256, 512],
+        list_ch=[-1, 16, 32, 64, 128, 256],
     )
 
     # Load model weights
@@ -118,7 +110,7 @@ if __name__ == "__main__":
     for subject_id in test_indices:
         # Start inference
         print("\n\n# Start inference !")
-        list_patient_dirs = [os.path.join(test_dir, "DLDP_" + str(subject_id).zfill(3))]
+        list_patient_dirs = [os.path.join(data_dir, "DLDP_" + str(subject_id).zfill(3))]
         inference(
             trainer,
             list_patient_dirs,
@@ -131,7 +123,7 @@ if __name__ == "__main__":
         Dose_score, DVH_score = get_Dose_score_and_DVH_score_per_ROI(
             prediction_dir=os.path.join(trainer.setting.output_dir, "Prediction"),
             patient_id=subject_id,
-            gt_dir=gt_dir,
+            gt_dir=data_dir,
         )
 
         with open(
@@ -179,7 +171,7 @@ if __name__ == "__main__":
         Dose_score, DVH_score = get_Dose_score_and_DVH_score(
             prediction_dir=os.path.join(trainer.setting.output_dir, "Prediction"),
             patient_id=subject_id,
-            gt_dir=gt_dir,
+            gt_dir=data_dir,
         )
 
         dose_score.append(Dose_score)

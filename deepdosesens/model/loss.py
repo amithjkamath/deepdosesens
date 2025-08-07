@@ -30,7 +30,7 @@ class UNetLoss(nn.Module):
         return L1_loss
 
 
-class C3DLoss(UNetLoss):
+class C3DLoss(nn.Module):
     """Loss function for the Cascaded UNet model.
     It computes the L1 loss between the predicted doses and the ground truth doses,
     considering only the regions where the possible dose mask is greater than zero.
@@ -38,7 +38,8 @@ class C3DLoss(UNetLoss):
 
     def __init__(self):
         """Initialize the Loss class."""
-        super(UNetLoss).__init__()
+        super().__init__()
+        self.lossfunc = nn.L1Loss(reduction="mean")
 
     def forward(self, pred, gt):
         """Compute the loss.
