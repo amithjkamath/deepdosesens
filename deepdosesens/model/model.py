@@ -1,6 +1,10 @@
+import logging
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+
+logger = logging.getLogger(__name__)
 
 
 class SingleConv(nn.Module):
@@ -198,9 +202,9 @@ class BaseUNet(nn.Module):
 
     def initialize(self):
         """Initialize the BaseUNet."""
-        print("# random init encoder weight using nn.init.kaiming_uniform !")
+        logger.debug("random init encoder weight using nn.init.kaiming_uniform")
         self.init_conv_IN(self.decoder.modules)
-        print("# random init decoder weight using nn.init.kaiming_uniform !")
+        logger.debug("random init decoder weight using nn.init.kaiming_uniform")
         self.init_conv_IN(self.encoder.modules)
 
     def forward(self, x):

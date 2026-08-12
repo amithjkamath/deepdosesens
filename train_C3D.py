@@ -13,6 +13,7 @@ from deepdosesens.training.trainer import NetworkTrainer
 from deepdosesens.model.model import CascadedUNet
 from deepdosesens.training.validator import validate
 from deepdosesens.model.loss import C3DLoss
+from deepdosesens.config import data_path, results_path
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -40,9 +41,7 @@ if __name__ == "__main__":
     #  Start training
     trainer = NetworkTrainer()
     trainer.setting.project_name = "C3D"
-    trainer.setting.output_dir = (
-        "/storage/homefs/ak21u605/data/treatmentplan/processed-dldp-c3dmodel-isas"
-    )
+    trainer.setting.output_dir = str(results_path("training", trainer.setting.project_name))
     list_GPU_ids = args.list_GPU_ids
 
     trainer.setting.network = CascadedUNet(
@@ -60,26 +59,22 @@ if __name__ == "__main__":
     logger.info(f"Max iterations: {args.max_iter}")
 
     list_eval_dirs = [
-        "/storage/homefs/ak21u605/data/treatmentplan/processed-dldp/DLDP_"
-        + str(i).zfill(3)
+        str(data_path("glioblastoma", "DLDP_" + str(i).zfill(3)))
         for i in range(62, 80)
         if i not in [63, 65, 67, 77]  # missing data
     ]
     list_eval_dirs += [
-        "/storage/homefs/ak21u605/data/treatmentplan/processed-dldp/DLDP_"
-        + str(i).zfill(3)
+        str(data_path("glioblastoma", "DLDP_" + str(i).zfill(3)))
         for i in range(108, 109)
     ]
 
     list_train_dirs = [
-        "/storage/homefs/ak21u605/data/treatmentplan/processed-dldp/DLDP_"
-        + str(i).zfill(3)
+        str(data_path("glioblastoma", "DLDP_" + str(i).zfill(3)))
         for i in range(1, 62)
         if i != 40  # missing data
     ]
     list_train_dirs += [
-        "/storage/homefs/ak21u605/data/treatmentplan/processed-dldp/DLDP_"
-        + str(i).zfill(3)
+        str(data_path("glioblastoma", "DLDP_" + str(i).zfill(3)))
         for i in range(101, 107)
     ]
 

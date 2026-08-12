@@ -13,6 +13,7 @@ from deepdosesens.training.trainer import NetworkTrainer
 from deepdosesens.model.model import UNet
 from deepdosesens.training.validator import validate
 from deepdosesens.model.loss import UNetLoss
+from deepdosesens.config import data_path, results_path
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -38,12 +39,10 @@ if __name__ == "__main__":
     )
     args = parser.parse_args()
 
-    # data_root = "/storage/homefs/ak21u605/data/treatmentplan/processed-dldp"
-    # output_dir = "/storage/homefs/ak21u605/data/treatmentplan/processed-dldp-UNet"
-    data_root = "/Users/amithkamath/repo/papers/deepdosesens/data/processed-dldp"
-    output_dir = (
-        "/Users/amithkamath/repo/papers/deepdosesens/results/processed-dldp-UNet"
-    )
+    # Locations come from deepdosesens.config, so they follow DEEPDOSESENS_DATA /
+    # DEEPDOSESENS_RESULTS (or a .env file) rather than being baked in here.
+    data_root = str(data_path("glioblastoma"))
+    output_dir = str(results_path("training", "UNet"))
 
     #  Start training
     trainer = NetworkTrainer()

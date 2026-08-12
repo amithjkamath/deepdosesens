@@ -1,0 +1,545 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>How sensitive is a dose predictor to the contours you feed it?</title>
+<meta name="description" content="A cascaded 3D U-Net predicts the radiotherapy dose for glioblastoma in seconds. We test whether it is sensitive enough to judge a contour by its dosimetric consequence. ISBI 2023 and Cancers 2023." />
+<meta property="og:title" content="How sensitive is a dose predictor to the contours you feed it?" />
+<meta property="og:description" content="Deep-learning dose prediction for glioblastoma, and what it can and cannot tell you about contour quality." />
+<meta property="og:image" content="https://amithjkamath.github.io/deepdosesens/img/dose_sweep_DLDP_086-poster.jpg" />
+<meta property="og:type" content="website" />
+<style>
+:root {
+  color-scheme: light;
+  --surface:        #fcfcfb;
+  --surface-2:      #f4f4f1;
+  --rule:           #e2e1dc;
+  --text-primary:   #101010;
+  --text-secondary: #52514e;
+  --text-muted:     #77766f;
+  --accent:         #1c5cab;
+  --g1: #2a78d6;   /* no-skip   */
+  --g2: #eb6834;   /* standard  */
+  --g3: #1baf7a;   /* enhanced  */
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+    --surface:        #16161a;
+    --surface-2:      #1f1f24;
+    --rule:           #33333a;
+    --text-primary:   #f4f4f2;
+    --text-secondary: #bebdb6;
+    --text-muted:     #94938c;
+    --accent:         #86b6ef;
+    --g1: #3987e5;
+    --g2: #d95926;
+    --g3: #199e70;
+  }
+}
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body {
+  margin: 0;
+  background: var(--surface);
+  color: var(--text-primary);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+  font-size: 17px;
+  line-height: 1.65;
+  -webkit-font-smoothing: antialiased;
+}
+.wrap { max-width: 820px; margin: 0 auto; padding: 0 20px; }
+a { color: var(--accent); }
+
+/* ---------- header ---------- */
+header { padding: 56px 0 8px; text-align: center; }
+.venue {
+  font-size: 0.8rem; letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--text-muted); margin-bottom: 20px;
+}
+h1 { font-size: clamp(1.9rem, 4.6vw, 2.9rem); line-height: 1.15; margin: 0 0 10px; letter-spacing: -0.02em; }
+.subtitle { font-size: clamp(1.05rem, 2.2vw, 1.3rem); color: var(--text-secondary); margin: 0 0 26px; font-weight: 400; }
+.authors { margin: 0 0 6px; line-height: 2; }
+.authors a { text-decoration: none; }
+.authors a:hover { text-decoration: underline; }
+.affil { color: var(--text-secondary); font-size: 0.9rem; margin: 0 0 4px; }
+.award { color: var(--text-secondary); font-size: 0.9rem; margin: 14px 0 0; }
+.tldr {
+  max-width: 640px; margin: 26px auto 0; padding: 14px 18px;
+  background: var(--surface-2); border-radius: 8px;
+  font-size: 0.98rem; color: var(--text-secondary); text-align: left;
+}
+.tldr b { color: var(--text-primary); }
+.btns { display: flex; flex-wrap: wrap; gap: 9px; justify-content: center; margin: 28px 0 8px; }
+.btn {
+  display: inline-flex; align-items: center; gap: 7px;
+  padding: 8px 16px; border-radius: 999px; text-decoration: none;
+  background: var(--text-primary); color: var(--surface);
+  font-size: 0.88rem; font-weight: 500; border: 1px solid var(--text-primary);
+}
+.btn:hover { opacity: 0.85; }
+.btn.ghost { background: transparent; color: var(--text-primary); border-color: var(--rule); }
+
+/* ---------- sections ---------- */
+main { padding-bottom: 72px; }
+section { padding-top: 44px; }
+h2 { font-size: 1.5rem; margin: 0 0 14px; letter-spacing: -0.01em; }
+h3 { font-size: 1.08rem; margin: 30px 0 8px; }
+p { margin: 0 0 15px; }
+hr { border: 0; border-top: 1px solid var(--rule); margin: 44px 0 0; }
+figure { margin: 24px 0; }
+figure img { width: 100%; height: auto; border-radius: 6px; display: block; }
+figcaption { font-size: 0.87rem; color: var(--text-secondary); margin-top: 9px; line-height: 1.5; }
+figcaption strong { display: block; color: var(--text-primary); margin-bottom: 2px; }
+ul { padding-left: 20px; margin: 0 0 15px; }
+li { margin-bottom: 9px; }
+.lead { color: var(--text-secondary); }
+
+/* ---------- tables ---------- */
+.scroll { overflow-x: auto; margin: 20px 0; }
+table { border-collapse: collapse; width: 100%; font-size: 0.86rem; }
+th, td { padding: 6px 10px; text-align: right; border-bottom: 1px solid var(--rule); white-space: nowrap; }
+th[scope="row"], thead th:first-child { text-align: left; font-weight: 500; }
+thead th { color: var(--text-secondary); font-weight: 600; font-size: 0.8rem; }
+.dsrow th { text-align: left; padding-top: 16px; font-size: 0.82rem; letter-spacing: 0.05em;
+  text-transform: uppercase; color: var(--text-muted); border-bottom-color: transparent; }
+.drop { color: var(--text-secondary); }
+.sw { display: inline-block; width: 9px; height: 9px; border-radius: 2px; margin-right: 8px; vertical-align: middle; }
+.sw.g1 { background: var(--g1); } .sw.g2 { background: var(--g2); } .sw.g3 { background: var(--g3); }
+table.plain td, table.plain th { text-align: left; white-space: normal; }
+
+/* ---------- charts ---------- */
+.facets { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 8px; margin: 8px 0 4px; }
+.facet { width: 100%; height: auto; overflow: visible; }
+.facet-title { font-size: 10px; font-weight: 600; fill: var(--text-primary); }
+.grid { stroke: var(--rule); stroke-width: 1; }
+.axis { stroke: var(--text-muted); stroke-width: 1; }
+.tick { font-size: 8px; fill: var(--text-muted); }
+.xtick { font-size: 8px; }
+.ln { fill: none; stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+.ln.dash { stroke-dasharray: 5 3; }
+.pt { stroke: var(--surface); stroke-width: 1.5; }
+.hit { fill: transparent; }
+.g1 { stroke: var(--g1); } circle.g1 { fill: var(--g1); }
+.g2 { stroke: var(--g2); } circle.g2 { fill: var(--g2); }
+.g3 { stroke: var(--g3); } circle.g3 { fill: var(--g3); }
+.legend { display: flex; flex-wrap: wrap; gap: 8px 20px; font-size: 0.83rem; color: var(--text-secondary); margin: 14px 0 4px; }
+.legend span { display: inline-flex; align-items: center; gap: 7px; }
+.legend svg { flex: none; }
+
+/* ---------- demos ---------- */
+.demos { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 26px; margin-top: 20px; }
+.demo { margin: 0; }
+.demo video { width: 100%; height: auto; display: block; border-radius: 6px; background: #0d1117; }
+
+/* ---------- bibtex ---------- */
+pre {
+  background: var(--surface-2); border: 1px solid var(--rule); border-radius: 6px;
+  padding: 14px 16px; overflow-x: auto; font-size: 0.78rem; line-height: 1.6;
+  color: var(--text-secondary); margin: 0 0 16px;
+}
+footer { border-top: 1px solid var(--rule); padding: 26px 0 60px; font-size: 0.84rem; color: var(--text-muted); }
+footer a { color: var(--text-muted); }
+
+/* ---------- bar charts ---------- */
+.bar { fill: var(--g1); }
+.bar.sample { fill: var(--g2); }
+.bar.resp { fill: var(--g3); }
+.ref { stroke: var(--text-primary); stroke-width: 1; stroke-dasharray: 3 2; }
+.tick.val { fill: var(--text-secondary); }
+.note { background: var(--surface-2); border-left: 3px solid var(--g2); border-radius: 0 6px 6px 0;
+  padding: 12px 16px; margin: 20px 0; font-size: 0.94rem; color: var(--text-secondary); }
+.note b { color: var(--text-primary); }
+.papers { margin: 0 0 6px; line-height: 1.9; font-size: 0.94rem; }
+.papers .tag { font-size: 0.72rem; letter-spacing: 0.06em; text-transform: uppercase;
+  color: var(--text-muted); margin-right: 8px; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap">
+    <p class="venue">IEEE ISBI 2023 &nbsp;&middot;&nbsp; Cancers 2023</p>
+    <h1>How sensitive is a dose predictor to the contours you feed it?</h1>
+    <p class="subtitle">Deep-learning dose prediction for glioblastoma, and what it can tell you about contour quality</p>
+
+    <p class="papers">
+      <span class="tag">ISBI 2023</span>
+      <a href="https://amithjkamath.github.io">Amith Kamath</a><sup>1</sup>,
+      Robert Poel<sup>1,2</sup>,
+      <a href="https://scholar.google.com/citations?user=smUWeEgAAAAJ&amp;hl=en">Jonas Willmann</a><sup>3,4</sup>,
+      <a href="https://scholar.google.com/citations?user=n0oz878AAAAJ&amp;hl=en">Nicolaus Andratschke</a><sup>3</sup>,
+      <a href="https://mauricioreyes.me/">Mauricio Reyes</a><sup>1</sup>
+    </p>
+    <p class="papers">
+      <span class="tag">Cancers 2023</span>
+      Robert Poel<sup>2,1</sup>,
+      <a href="https://amithjkamath.github.io">Amith J. Kamath</a><sup>1</sup>,
+      Jonas Willmann<sup>3</sup>,
+      Nicolaus Andratschke<sup>3</sup>,
+      Ekin Ermi&#351;<sup>2</sup>,
+      Daniel M. Aebersold<sup>2</sup>,
+      Peter Manser<sup>2,5</sup>,
+      Mauricio Reyes<sup>1,2</sup>
+    </p>
+    <p class="affil"><sup>1</sup>ARTORG Center, University of Bern &nbsp;&nbsp;
+      <sup>2</sup>Inselspital, Bern University Hospital &nbsp;&nbsp;
+      <sup>3</sup>University Hospital Zurich &nbsp;&nbsp;
+      <sup>4</sup>Center for Proton Therapy, PSI &nbsp;&nbsp;
+      <sup>5</sup>Division of Medical Radiation Physics, Bern</p>
+
+    <div class="btns">
+      <a class="btn" href="https://ieeexplore.ieee.org/document/10230709">ISBI paper</a>
+      <a class="btn" href="https://doi.org/10.3390/cancers15174226">Journal extension</a>
+      <a class="btn ghost" href="https://github.com/amithjkamath/deepdosesens">Code</a>
+      <a class="btn ghost" href="https://youtu.be/Lz5-n4lA3QM">Talk</a>
+    </div>
+
+    <p class="tldr"><b>In short.</b> A cascaded 3D U-Net reproduces a clinical glioblastoma
+    dose plan to about 0.94&nbsp;Gy mean error in seconds rather than hours. It is sensitive to
+    realistic redrawings of an organ contour, tracking the dose change a re-optimised plan
+    delivers, and it can be made robust to target shapes the training set never contained by
+    adding a handful of them. That combination is what a dose-aware check on contouring needs.</p>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <figure>
+    <img src="img/dose_sweep_DLDP_086-poster.jpg" alt="One axial slice of a glioblastoma case: the planned dose on the left and the model's predicted dose on the right, both as a heat map over the planning CT, with the target volume and organs at risk outlined." />
+    <figcaption>The task. Given a planning CT and the contours &mdash; target volume plus 13 organs
+    at risk &mdash; predict the 3D dose distribution a treatment planning system would produce.
+    Left, the clinical plan; right, the prediction. This is the largest target of the 20 test
+    cases and the one with the most organs in play.</figcaption>
+  </figure>
+
+  <section id="abstract">
+    <h2>Abstract</h2>
+    <p>Radiotherapy planning for glioblastoma starts with contours: the target volume and the
+    organs at risk around it. Those contours take hours of a clinician's time, vary between
+    experts, and are only checked dosimetrically much later, once a plan has been computed. A
+    model that predicts the dose distribution in seconds could move that check forward &mdash; if
+    the prediction reacts to a contour edit the way a re-optimised plan does.</p>
+    <p>We trained a two-level cascaded 3D U-Net on 60 curated glioblastoma VMAT cases and
+    evaluated it on 20 held-out ones with the openKBP dose and DVH scores. The model reaches a
+    mean dose error under 1&nbsp;Gy against plans prescribing 60&nbsp;Gy. We then tested it two
+    ways: against ten plausible redrawings of one left optic nerve, each with its own
+    re-optimised reference plan; and against target shapes the training set never contained
+    &mdash; concave targets and targets split into several lesions &mdash; before and after adding
+    six such cases to training. The model tracks the dose changes the re-planned contours
+    produce, and the shape gaps close with a small amount of targeted data, which together
+    support using such a model for dose-aware quality assurance of contours.</p>
+  </section>
+
+  <section id="findings">
+    <h2>What we found</h2>
+    <ul>
+      <li><strong>Accurate enough to be useful.</strong> 0.94&nbsp;Gy mean dose error over 20
+      test cases, and a DVH score of 1.95&nbsp;Gy across the 13 organs at risk and the target.
+      Inference takes about 15&nbsp;s on a GPU against hours for a full plan.</li>
+      <li><strong>Out-of-distribution target shapes break conformity, and a little data fixes
+      it.</strong> On concave targets the initial model loses the dose shaping the plan achieves;
+      adding six concave cases to the training set recovers most of it. Multiple-lesion targets
+      improve far less.</li>
+      <li><strong>It follows realistic contour edits.</strong> Across ten plausible redrawings
+      of one left optic nerve, each with its own re-optimised plan, the dose change the model
+      predicts correlates at <strong>+0.926</strong> with the dose change the plan delivers.</li>
+      <li><strong>Geometry alone does not tell you that.</strong> The Dice coefficient between a
+      redrawn contour and the original correlates at only <strong>&minus;0.471</strong> with the
+      dose change. A contour can score well on Dice and still shift the dose, or score poorly
+      and barely matter &mdash; which is the case for judging contours dosimetrically.</li>
+    </ul>
+  </section>
+
+  <section id="model">
+    <h2>The model</h2>
+    <p>A two-level cascaded 3D U-Net, the architecture that won the
+    <a href="https://doi.org/10.1002/mp.14845">openKBP</a> challenge: the second U-Net receives
+    the first one's output concatenated with its own input. 15 input channels at 128&sup3; &mdash;
+    the normalised planning CT, the target volume and 13 organ-at-risk masks &mdash; and one
+    continuous output channel scaled to 0&ndash;70&nbsp;Gy.</p>
+    <div class="scroll">
+      <table class="plain">
+        <thead><tr><th>Setting</th><th>Value</th></tr></thead>
+        <tbody>
+          <tr><th scope="row">Cohort</th><td>125 glioblastoma cases planned to 60&nbsp;Gy in 30 fractions (double full co-planar VMAT arc, 6&nbsp;MV, Eclipse AAA)</td></tr>
+          <tr><th scope="row">Split</th><td>60 train, 15 validation, 20 test; 5 excluded for missing contours</td></tr>
+          <tr><th scope="row">Loss</th><td>0.5&thinsp;&middot;&thinsp;L1(reference, coarse) + L1(reference, refined)</td></tr>
+          <tr><th scope="row">Schedule</th><td>80&thinsp;000 iterations, He initialisation, five independent runs</td></tr>
+          <tr><th scope="row">Inference</th><td>four-flip test-time augmentation; ~15&nbsp;s on an A5000, ~45&nbsp;s on Apple silicon</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="lead">Both papers use the same architecture and the same 20-case test set. The
+    journal version adds the out-of-distribution target shapes and three retrained models.</p>
+  </section>
+
+  <section id="demos">
+    <h2>Watching it work</h2>
+    <p>Every clip puts the planning CT in grey under a dose heat map, 20&ndash;65&nbsp;Gy, with the
+    target volume in white and one hue per organ at risk. Below 20&nbsp;Gy the overlay is
+    transparent so the anatomy stays readable, and opacity rises with dose so the high-dose
+    region is where the eye goes.</p>
+    <p class="lead">Test cases are picked by measured properties &mdash; target size, how many
+    organs the plan pushes above 20&nbsp;Gy, and whether the prediction reproduces the plan's
+    fine streak structure &mdash; not by eye.</p>
+    <div class="demos">
+      <figure class="demo">
+        <video controls loop muted playsinline preload="none" poster="img/dose_sweep_DLDP_086-poster.jpg">
+          <source src="videos/dose_sweep_DLDP_086.mp4" type="video/mp4" />
+          Your browser does not support embedded video.
+        </video>
+        <figcaption><strong>Plan versus prediction, sweeping up through the head</strong>The
+        largest target in the test set, 278&nbsp;cc, with seven organs at risk above 20&nbsp;Gy
+        and the worst dose score of the twenty. The prediction tracks the shape of the high-dose
+        region and smooths the gradient at its edge.</figcaption>
+      </figure>
+      <figure class="demo">
+        <video controls loop muted playsinline preload="none" poster="img/dose_sweep_DLDP_097-poster.jpg">
+          <source src="videos/dose_sweep_DLDP_097.mp4" type="video/mp4" />
+          Your browser does not support embedded video.
+        </video>
+        <figcaption><strong>A target reaching down to the skull base</strong>Here the target
+        touches the chiasm, both optic nerves, the pituitary and the brainstem, so the plan has
+        real competing constraints. This is also the case whose fine radial streak structure the
+        model reproduces best.</figcaption>
+      </figure>
+      <figure class="demo">
+        <video controls loop muted playsinline preload="none" poster="img/optic_nerve_sensitivity-poster.jpg">
+          <source src="videos/optic_nerve_sensitivity.mp4" type="video/mp4" />
+          Your browser does not support embedded video.
+        </video>
+        <figcaption><strong>Ten plausible left optic nerves</strong>Each frame is one redrawing of
+        the nerve, drawn solid with the original dashed beside it, and each has its own
+        re-optimised plan. Left, the plan; right, the prediction. Under each panel is the mean
+        dose that contour receives, and the subtitle gives the shift from the original contour
+        for both &mdash; the two quantities the correlation above is computed on.</figcaption>
+      </figure>
+      <figure class="demo">
+        <video controls loop muted playsinline preload="none" poster="img/dose_sweep_DLDP_083-poster.jpg">
+          <source src="videos/dose_sweep_DLDP_083.mp4" type="video/mp4" />
+          Your browser does not support embedded video.
+        </video>
+        <figcaption><strong>A second large target</strong>235&nbsp;cc, and a case where the plan
+        pushes only one organ above 20&nbsp;Gy &mdash; so the high-dose region is shaped by the
+        target alone. The prediction's dose gradient is visibly smoother than the plan's.</figcaption>
+      </figure>
+      <figure class="demo">
+        <video controls loop muted playsinline preload="none" poster="img/robustness_multiple-poster.jpg">
+          <source src="videos/robustness_multiple.mp4" type="video/mp4" />
+          Your browser does not support embedded video.
+        </video>
+        <figcaption><strong>Two separate lesions, before and after retraining</strong>The harder of
+        the two shape gaps: with several targets close together the plan carves dose between them,
+        and this is where the retrained model gains least.</figcaption>
+      </figure>
+      <figure class="demo">
+        <video controls loop muted playsinline preload="none" poster="img/robustness_concave-poster.jpg">
+          <source src="videos/robustness_concave.mp4" type="video/mp4" />
+          Your browser does not support embedded video.
+        </video>
+        <figcaption><strong>A concave target, before and after retraining</strong>Three panels:
+        the plan, the initial model, and the model retrained with six concave cases. Only the
+        model changes across the row. Both this clip and the next use cases the retrained model
+        never saw.</figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <section id="results">
+    <h2>Results</h2>
+    <p>Two openKBP metrics, both in Gray and both lower-is-better. The <strong>dose score</strong>
+    is the mean absolute error between predicted and planned dose inside a region; the
+    <strong>DVH score</strong> is the mean absolute difference of dose-volume criteria &mdash;
+    mean dose and D(0.1&nbsp;cc) for an organ, D1/D95/D99 for the target.</p>
+
+    <div class="scroll">
+      <table>
+        <thead><tr><th>Test set</th><th>Initial</th><th>+ concave</th><th>+ multi-lesion</th><th>+ both</th></tr></thead>
+        <tbody>
+          <tr class="dsrow"><th colspan="5">Dose score</th></tr>
+          <tr><th scope="row">Standard, 20 cases</th><td>0.94</td><td>0.94</td><td>0.92</td><td>0.98</td></tr>
+          <tr><th scope="row">Concave targets</th><td>0.87</td><td>0.81</td><td>0.81</td><td>0.87</td></tr>
+          <tr><th scope="row">Multiple lesions</th><td>1.30</td><td>0.84</td><td>1.24</td><td>1.02</td></tr>
+          <tr class="dsrow"><th colspan="5">DVH score, organs at risk</th></tr>
+          <tr><th scope="row">Standard, 20 cases</th><td>2.01</td><td>1.73</td><td>1.85</td><td>1.89</td></tr>
+          <tr><th scope="row">Concave targets</th><td>2.11</td><td>1.67</td><td>1.99</td><td>2.08</td></tr>
+          <tr><th scope="row">Multiple lesions</th><td>3.05</td><td>1.86</td><td>3.05</td><td>2.67</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p>Reading across the first row: retraining does not cost anything on the standard test set.
+    Reading down the concave and multiple-lesion rows: the concave update helps most, and helps
+    on both kinds of hard shape.</p>
+
+    <h3>Which organs are hardest</h3>
+    <p>Dose score per organ at risk, averaged over the 20 test cases. Small organs sitting in the
+    steep part of the dose gradient are hardest; the whole-volume score is much lower than any of
+    them because most of the volume is far from the target.</p>
+    <div class="facets">
+<svg class="facet" viewBox="0 0 300 214" role="img" aria-label="Mean dose score per organ at risk, 20 test cases">
+<text class="facet-title" x="4" y="11">Dose score by organ at risk (Gy, lower is better)</text>
+<line class="grid" x1="96.0" y1="16" x2="96.0" y2="191.5"/>
+<text class="tick" x="96.0" y="201.5" text-anchor="middle">0</text>
+<line class="grid" x1="157.2" y1="16" x2="157.2" y2="191.5"/>
+<text class="tick" x="157.2" y="201.5" text-anchor="middle">1</text>
+<line class="grid" x1="218.5" y1="16" x2="218.5" y2="191.5"/>
+<text class="tick" x="218.5" y="201.5" text-anchor="middle">2</text>
+<line class="grid" x1="279.8" y1="16" x2="279.8" y2="191.5"/>
+<text class="tick" x="279.8" y="201.5" text-anchor="middle">3</text>
+<text class="tick" x="90" y="26.0" text-anchor="end">Chiasm</text>
+<rect class="bar" x="96" y="19.0" width="182.9" height="7.5" rx="2"/>
+<text class="tick val" x="282.9" y="26.0">2.99</text>
+<text class="tick" x="90" y="39.5" text-anchor="end">Hippocampus R</text>
+<rect class="bar" x="96" y="32.5" width="159.3" height="7.5" rx="2"/>
+<text class="tick val" x="259.3" y="39.5">2.60</text>
+<text class="tick" x="90" y="53.0" text-anchor="end">Cochlea R</text>
+<rect class="bar" x="96" y="46.0" width="149.1" height="7.5" rx="2"/>
+<text class="tick val" x="249.1" y="53.0">2.43</text>
+<text class="tick" x="90" y="66.5" text-anchor="end">OpticNerve R</text>
+<rect class="bar" x="96" y="59.5" width="138.9" height="7.5" rx="2"/>
+<text class="tick val" x="238.9" y="66.5">2.27</text>
+<text class="tick" x="90" y="80.0" text-anchor="end">Eye R</text>
+<rect class="bar" x="96" y="73.0" width="135.4" height="7.5" rx="2"/>
+<text class="tick val" x="235.4" y="80.0">2.21</text>
+<text class="tick" x="90" y="93.5" text-anchor="end">OpticNerve L</text>
+<rect class="bar" x="96" y="86.5" width="129.9" height="7.5" rx="2"/>
+<text class="tick val" x="229.9" y="93.5">2.12</text>
+<text class="tick" x="90" y="107.0" text-anchor="end">Hippocampus L</text>
+<rect class="bar" x="96" y="100.0" width="128.7" height="7.5" rx="2"/>
+<text class="tick val" x="228.7" y="107.0">2.10</text>
+<text class="tick" x="90" y="120.5" text-anchor="end">LacrimalGland R</text>
+<rect class="bar" x="96" y="113.5" width="118.8" height="7.5" rx="2"/>
+<text class="tick val" x="218.8" y="120.5">1.94</text>
+<text class="tick" x="90" y="134.0" text-anchor="end">Pituitary</text>
+<rect class="bar" x="96" y="127.0" width="115.8" height="7.5" rx="2"/>
+<text class="tick val" x="215.8" y="134.0">1.89</text>
+<text class="tick" x="90" y="147.5" text-anchor="end">Cochlea L</text>
+<rect class="bar" x="96" y="140.5" width="113.7" height="7.5" rx="2"/>
+<text class="tick val" x="213.7" y="147.5">1.86</text>
+<text class="tick" x="90" y="161.0" text-anchor="end">Eye L</text>
+<rect class="bar" x="96" y="154.0" width="91.1" height="7.5" rx="2"/>
+<text class="tick val" x="191.1" y="161.0">1.49</text>
+<text class="tick" x="90" y="174.5" text-anchor="end">LacrimalGland L</text>
+<rect class="bar" x="96" y="167.5" width="88.8" height="7.5" rx="2"/>
+<text class="tick val" x="188.8" y="174.5">1.45</text>
+<text class="tick" x="90" y="188.0" text-anchor="end">BrainStem</text>
+<rect class="bar" x="96" y="181.0" width="85.8" height="7.5" rx="2"/>
+<text class="tick val" x="185.8" y="188.0">1.40</text>
+<line class="ref" x1="153.5" y1="14" x2="153.5" y2="191.5"/>
+<text class="tick" x="156.5" y="211.5">whole-volume score 0.94</text>
+</svg>
+    </div>
+
+    <h3>Sensitivity to a redrawn contour</h3>
+    <p>Ten redrawings of one left optic nerve, chosen because the target sits close to it, each
+    validated as plausible by radiation oncologists and each re-planned in the treatment planning
+    system. For every alternative, how far the mean dose to that contour moves from the original
+    &mdash; in the plan, and in the prediction.</p>
+    <div class="legend">
+      <span><svg width="14" height="9"><rect width="14" height="9" rx="2" fill="var(--g2)"/></svg> re-optimised plan</span>
+      <span><svg width="14" height="9"><rect width="14" height="9" rx="2" fill="var(--g3)"/></svg> model prediction</span>
+    </div>
+    <div class="facets">
+<svg class="facet" viewBox="0 0 300 177" role="img" aria-label="For each alternative optic nerve contour, the change in mean dose in the re-optimised plan and in the prediction">
+<text class="facet-title" x="4" y="12">Change in mean dose to the contour (Gy)</text>
+<line class="grid" x1="62.0" y1="18" x2="62.0" y2="153.0"/>
+<text class="tick" x="62.0" y="164.0" text-anchor="middle">0</text>
+<line class="grid" x1="115.0" y1="18" x2="115.0" y2="153.0"/>
+<text class="tick" x="115.0" y="164.0" text-anchor="middle">2</text>
+<line class="grid" x1="168.0" y1="18" x2="168.0" y2="153.0"/>
+<text class="tick" x="168.0" y="164.0" text-anchor="middle">4</text>
+<line class="grid" x1="221.0" y1="18" x2="221.0" y2="153.0"/>
+<text class="tick" x="221.0" y="164.0" text-anchor="middle">6</text>
+<line class="grid" x1="274.0" y1="18" x2="274.0" y2="153.0"/>
+<text class="tick" x="274.0" y="164.0" text-anchor="middle">8</text>
+<text class="tick" x="56" y="29.0" text-anchor="end">contour 1</text>
+<rect class="bar sample" x="62" y="20.0" width="3.9" height="5" rx="1.5"><title>Contour 1: plan 0.15 Gy</title></rect>
+<rect class="bar resp" x="62" y="26.5" width="11.1" height="5" rx="1.5"><title>Contour 1: prediction 0.42 Gy</title></rect>
+<text class="tick" x="56" y="44.0" text-anchor="end">contour 2</text>
+<rect class="bar sample" x="62" y="35.0" width="7.5" height="5" rx="1.5"><title>Contour 2: plan 0.28 Gy</title></rect>
+<rect class="bar resp" x="62" y="41.5" width="5.9" height="5" rx="1.5"><title>Contour 2: prediction 0.22 Gy</title></rect>
+<text class="tick" x="56" y="59.0" text-anchor="end">contour 3</text>
+<rect class="bar sample" x="62" y="50.0" width="9.5" height="5" rx="1.5"><title>Contour 3: plan 0.36 Gy</title></rect>
+<rect class="bar resp" x="62" y="56.5" width="27.4" height="5" rx="1.5"><title>Contour 3: prediction 1.03 Gy</title></rect>
+<text class="tick" x="56" y="74.0" text-anchor="end">contour 4</text>
+<rect class="bar sample" x="62" y="65.0" width="11.5" height="5" rx="1.5"><title>Contour 4: plan 0.44 Gy</title></rect>
+<rect class="bar resp" x="62" y="71.5" width="13.8" height="5" rx="1.5"><title>Contour 4: prediction 0.52 Gy</title></rect>
+<text class="tick" x="56" y="89.0" text-anchor="end">contour 5</text>
+<rect class="bar sample" x="62" y="80.0" width="55.4" height="5" rx="1.5"><title>Contour 5: plan 2.09 Gy</title></rect>
+<rect class="bar resp" x="62" y="86.5" width="84.0" height="5" rx="1.5"><title>Contour 5: prediction 3.17 Gy</title></rect>
+<text class="tick" x="56" y="104.0" text-anchor="end">contour 6</text>
+<rect class="bar sample" x="62" y="95.0" width="63.7" height="5" rx="1.5"><title>Contour 6: plan 2.40 Gy</title></rect>
+<rect class="bar resp" x="62" y="101.5" width="65.9" height="5" rx="1.5"><title>Contour 6: prediction 2.49 Gy</title></rect>
+<text class="tick" x="56" y="119.0" text-anchor="end">contour 7</text>
+<rect class="bar sample" x="62" y="110.0" width="80.2" height="5" rx="1.5"><title>Contour 7: plan 3.03 Gy</title></rect>
+<rect class="bar resp" x="62" y="116.5" width="39.3" height="5" rx="1.5"><title>Contour 7: prediction 1.48 Gy</title></rect>
+<text class="tick" x="56" y="134.0" text-anchor="end">contour 8</text>
+<rect class="bar sample" x="62" y="125.0" width="127.6" height="5" rx="1.5"><title>Contour 8: plan 4.82 Gy</title></rect>
+<rect class="bar resp" x="62" y="131.5" width="144.1" height="5" rx="1.5"><title>Contour 8: prediction 5.44 Gy</title></rect>
+<text class="tick" x="56" y="149.0" text-anchor="end">contour 9</text>
+<rect class="bar sample" x="62" y="140.0" width="201.2" height="5" rx="1.5"><title>Contour 9: plan 7.59 Gy</title></rect>
+<rect class="bar resp" x="62" y="146.5" width="149.1" height="5" rx="1.5"><title>Contour 9: prediction 5.63 Gy</title></rect>
+</svg>
+    </div>
+    <p>The pairs move together: a contour that costs the plan 7.6&nbsp;Gy costs the prediction
+    5.6&nbsp;Gy, and contours the plan barely notices the model barely notices either. Over the
+    nine alternatives the correlation is <strong>+0.926</strong>, against
+    <strong>&minus;0.471</strong> for the Dice coefficient over the same contours. Mean absolute
+    dose change is 2.12&nbsp;Gy for the plan and 2.04&nbsp;Gy for the prediction, and no contour
+    variation moved any organ dose by more than 5% of the prescription.</p>
+  </section>
+
+  <section id="practice">
+    <h2>What to do with this</h2>
+    <ul>
+      <li><strong>A near-instant dose predictor is worth having.</strong> Under 1&nbsp;Gy mean
+      error on a 60&nbsp;Gy prescription, from 60 training cases, is enough to give a planner a
+      dosimetric view while contours are still editable.</li>
+      <li><strong>Cover the shapes you expect to see.</strong> Six extra cases of a target shape
+      the training set lacked recovered most of the lost conformity. Curating for shape coverage
+      is cheaper than more data in general.</li>
+      <li><strong>Judge a contour by its dose, not its overlap.</strong> Dice tells you two
+      contours differ; only the dose tells you whether the difference matters to the patient.</li>
+      <li><strong>Keep the artifacts and re-derive the tables from them.</strong> Every number on
+      this page is recomputed from the archived volumes by
+      <a href="https://github.com/amithjkamath/deepdosesens">the code in the repository</a>.</li>
+    </ul>
+  </section>
+
+  <section id="citation">
+    <h2>Citation</h2>
+<pre>@inproceedings{kamath2023doseprediction,
+  title        = {How sensitive are deep learning based radiotherapy dose prediction models to variability in Organs At Risk segmentation?},
+  author       = {Kamath, Amith and Poel, Robert and Willmann, Jonas and Andratschke, Nicolaus and Reyes, Mauricio},
+  booktitle    = {2023 IEEE 20th International Symposium on Biomedical Imaging (ISBI)},
+  pages        = {1--4},
+  year         = {2023},
+  organization = {IEEE}
+}</pre>
+<pre>@article{poel2023deep,
+  title     = {Deep-Learning-Based Dose Predictor for Glioblastoma--Assessing the Sensitivity and Robustness for Dose Awareness in Contouring},
+  author    = {Poel, Robert and Kamath, Amith J and Willmann, Jonas and Andratschke, Nicolaus and Ermi{\c{s}}, Ekin and Aebersold, Daniel M and Manser, Peter and Reyes, Mauricio},
+  journal   = {Cancers},
+  volume    = {15},
+  number    = {17},
+  pages     = {4226},
+  year      = {2023},
+  publisher = {MDPI}
+}</pre>
+  </section>
+
+</main>
+
+<footer>
+  <div class="wrap">
+    <p>Part of a wider thread on
+    <a href="https://amithjkamath.github.io/projects/Theme-Robustness/">robust segmentation and
+    planning models</a>. Code, data pointers and the full reproduction audit at
+    <a href="https://github.com/amithjkamath/deepdosesens">github.com/amithjkamath/deepdosesens</a>.</p>
+  </div>
+</footer>
+
+</body>
+</html>

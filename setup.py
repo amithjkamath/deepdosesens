@@ -18,6 +18,10 @@ REQUIRED_PACKAGES = [
     "pydicom",
     "pymedphys",
     "DicomRTTool",
+    "pandas",
+    "matplotlib",
+    "scipy",
+    "python-dotenv",
 ]
 
 TEST_PACKAGES = []

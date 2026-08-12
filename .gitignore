@@ -1,6 +1,16 @@
-# Ignore data and model files
-data/*
-results/*
+# Nothing large is committed. Planning data, model weights, predicted dose volumes
+# and reproduced tables all live in the artifact archives and are fetched with
+# scripts/fetch_artifacts.sh. The only committed media is docs/videos/, the
+# repo-sized demonstration clips.
+/data/
+/checkpoints/
+/predictions/
+/results/
+*.pkl
+*.pt
+
+# Local path configuration; .env.example IS committed as the template.
+.env
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
